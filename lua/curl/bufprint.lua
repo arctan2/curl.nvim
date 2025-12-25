@@ -1,7 +1,7 @@
 local M = {}
 local scratch = require("scratch")
 
-function M.fprint(...)
+function M.bufprint(...)
 	local args = {...}
 
 	for i, arg in ipairs(args) do

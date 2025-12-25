@@ -33,4 +33,48 @@ function M.trim(s)
     return string.gsub(left_trimmed, "%s+$", "")
 end
 
+---@param str string
+---@return string[]
+function M.split_lines(str)
+    str = str:gsub("\r\n", "\n")
+
+    if str:sub(-1) ~= "\n" then
+        str = str .. "\n"
+    end
+
+    local result = {}
+    for line in string.gmatch(str, "(.-)\n") do
+        table.insert(result, line)
+    end
+    return result
+end
+
+---@param str string
+---@param delim string
+---@return string[]
+function M.split_delim(str, delim)
+    if delim == nil or #delim == 0 then
+        return {str}
+    end
+
+    local result = {}
+    local pos = 1
+    local del_len = #delim
+
+    while true do
+        local nextPos = string.find(str, delim, pos, true)
+        if nextPos then
+            local part = string.sub(str, pos, nextPos - 1)
+            pos = nextPos + del_len
+            table.insert(result, part)
+        else
+            local part = string.sub(str, pos)
+            table.insert(result, part)
+            break
+        end
+    end
+
+    return result
+end
+
 return M
