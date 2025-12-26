@@ -13,6 +13,7 @@ local States = {
 ---@enum Sections
 local Sections = {
 	REQ = "REQ",
+	ARGS = "ARGS",
 	COOKIES = "COOKIES",
 	QUERY = "QUERY",
 	RES = "RES",
@@ -43,8 +44,11 @@ local HttpMethods = {
 ---@field idx number
 ---@field state States
 ---@field cur_section Sections?
----@field http_state HttpPacket
 ---@field error_msg? string
+---@field verbose_output boolean
+---@field verbose_all boolean
+---@field replace_asterisk_backslash boolean
+---@field http_state HttpPacket
 local ParserState = {}
 ParserState.__index = ParserState
 
@@ -55,6 +59,9 @@ function ParserState.new(lines)
 	self.idx = 0
 	self.state = States.START
 	self.cur_section = nil
+	self.verbose_output = false
+	self.verbose_all = false
+	self.replace_asterisk_backslash = true
 	self.http_state = {
 		headers = {},
 		cookies = {},
@@ -135,6 +142,12 @@ end
 ---@return boolean
 function ParserState:is_section(line)
 	return line:sub(1, 1) == "#"
+end
+
+---@param line string
+---@return boolean
+function ParserState:is_comment(line)
+	return vim.trim(line):sub(1, 2) == "//"
 end
 
 ---@param line string
@@ -233,10 +246,79 @@ function ParserState:eval_QUERY(line)
 	return true
 end
 
+---@param arg string
+---@return boolean
+function ParserState:eval_long_arg(arg)
+	local l, r = unpack(vim.split(arg:sub(3, #arg), "=")) ---@diagnostic disable-line
+	if l == nil then
+		self:set_error("Invalid empty arg")
+		return false
+	end
+
+	if l == "verbose" then
+		self.verbose_output = true
+	elseif l == "all" then
+		self.verbose_all = true
+	elseif l == "replace_asterisk_backslash" then
+		if r == nil then
+			self:set_error("Missing value for arg '%s'", l)
+			return false
+		end
+
+		if r ~= "false" and r ~= "true" then
+			self:set_error("Invalid value for arg '%s'. Must be either true or false.", l)
+			return false
+		end
+
+		self.replace_asterisk_backslash = false
+	else
+		self:set_error("Unknown arg '%s'", arg)
+		return false
+	end
+
+	return true
+end
+
+---@param arg string
+---@return boolean
+function ParserState:eval_short_arg(arg)
+	local l, r = unpack(vim.split(arg:sub(2, #arg), "=")) ---@diagnostic disable-line
+	if l == nil then
+		self:set_error("Invalid empty arg")
+		return false
+	end
+
+	if l == "v" then
+		self.verbose_output = true
+	end
+
+	return true
+end
+
+---@param line string
+---@return boolean
+function ParserState:eval_ARGS(line)
+	---@type string[]
+	local args = vim.split(line, " ") ---@diagnostic disable-line
+	local ret = true
+
+	for _, v in ipairs(args) do
+		if v == "" then goto continue end
+		if v:sub(1, 2) == "--" then
+			ret = ret and self:eval_long_arg(v)
+		elseif v:sub(1, 1) == "-" then
+			ret = ret and self:eval_short_arg(v)
+		end
+	    ::continue::
+	end
+	return true
+end
+
 local eval_map = {
 	[Sections.REQ] = ParserState.eval_REQ,
 	[Sections.COOKIES] = ParserState.eval_COOKIES,
 	[Sections.QUERY] = ParserState.eval_QUERY,
+	[Sections.ARGS] = ParserState.eval_ARGS,
 }
 
 ---@param og_line string
@@ -280,8 +362,13 @@ function ParserState:to_curl_cmd()
 		return {}
 	end
 
-	local cmd = {"curl", "-v"}
+	local cmd = {"curl"}
 	local url = self.http_state.host
+
+	if self.verbose_output then
+		common.table_insert_multi(cmd, "-v")
+	end
+
 	common.table_insert_multi(cmd, "-X", self.http_state.method)
 
 	if common.table_size(self.http_state.headers) > 0 then
@@ -335,7 +422,9 @@ function M.parse(lines)
 	local line = parser:next_line_non_empty_trimmed()
 
 	while line ~= nil and continue do
-		if parser:is_section(line) then
+		if parser:is_comment(line) then
+			-- do nothing
+		elseif parser:is_section(line) then
 			continue = parser:update_section_and_state(parser:get_section_name(line))
 		else
 			continue = parser:eval(line)
@@ -352,7 +441,12 @@ function M.parse(lines)
 
 	local e = parser.error_msg
 	if e then return { cmd = nil, error_msg = e } end
-	return { cmd = parser:to_curl_cmd(), error_msg = e }
+	return {
+		cmd = parser:to_curl_cmd(),
+		error_msg = e,
+		replace_asterisk_backslash = parser.replace_asterisk_backslash,
+		verbose_all = parser.verbose_all
+	}
 end
 
 return M

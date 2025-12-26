@@ -8,6 +8,8 @@ local parser = require("curl.parser")
 -- 	common = require("curl.common")
 -- 	parser = require("curl.parser")
 -- end
+-- 
+-- reload()
 
 local function reset_custom_buffer(name)
     local bufnr = vim.fn.bufnr(name)
@@ -22,8 +24,6 @@ local function reset_custom_buffer(name)
 end
 
 function M.new_empty_buf()
-	-- reload()
-
 	local bufname = "-- CURL --"
 	local bufnr = reset_custom_buffer(bufname)
 
@@ -53,7 +53,7 @@ end
 
 local discard_starts_with = { "^ ", "^[*]", "^Note", "^[0-9]", "^[{}]" }
 
-local function run_curl_clean(cmd, bufnr, line_nr)
+local function run_curl_clean(cmd, bufnr, line_nr, replace_asterisk_backslash, verbose_all)
 	print("Running curl...")
 	local stdout_data = {}
 	local stderr_data = {}
@@ -74,15 +74,22 @@ local function run_curl_clean(cmd, bufnr, line_nr)
 			local stdout_str = table.concat(stdout_data)
 			local stderr_str = table.concat(stderr_data)
 
+			if replace_asterisk_backslash then
+				stderr_str = stderr_str:gsub("%*/", "* /")
+				stdout_str = stdout_str:gsub("%*/", "* /")
+			end
+
 			local lines_stderr = vim.split(stderr_str, "[\r\n]", { trimempty = true })
 			local lines_stdout = vim.split(stdout_str, "[\r\n]", { trimempty = true })
 
-			lines_stderr = vim.tbl_filter(function(line)
-				for _, v in pairs(discard_starts_with) do
-					if string.find(line, v) then return false end
-				end
-				return line ~= ""
-			end, lines_stderr)
+			if not verbose_all then
+				lines_stderr = vim.tbl_filter(function(line)
+					for _, v in pairs(discard_starts_with) do
+						if string.find(line, v) then return false end
+					end
+					return line ~= ""
+				end, lines_stderr)
+			end
 
 			local lines = lines_stderr
 			table.insert(lines, "")
@@ -136,7 +143,13 @@ function M.try_run_req_within_buf()
 		error(res.error_msg)
 	end
 
-	run_curl_clean(res.cmd, bufnr, end_line_nr - 1)
+	run_curl_clean(
+		res.cmd,
+		bufnr,
+		end_line_nr - 1,
+		res.replace_asterisk_backslash,
+		res.verbose_all
+	)
 end
 
 return M

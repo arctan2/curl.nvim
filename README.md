@@ -48,6 +48,24 @@ Another-header-key: Value
 #END
 ```
 ---
+`#ARGS`
+
+Specify args for the curl and other args
+Example:
+```
+#REQ
+GET http://localhost:3000
+
+#ARGS
+-v --replace_asterisk_backslash=false
+#END
+```
+
+args:
+- `-v`, `--verbose`: verbose output
+- `--all`: more verbose output
+- `--replace_asterisk_backslash=[true|false]`: to replace `*/` with `* /` (`*/` will break multi line comments)
+---
 `#QUERY`
 
 It will contain the list of query params. It's just list of `<key>=<value>`.
