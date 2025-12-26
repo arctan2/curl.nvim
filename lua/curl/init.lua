@@ -1,7 +1,10 @@
 local M = {}
+local reloader = require("plenary.reload")
 local normal = require("curl.normal")
 local insert = require("curl.insert")
-local reloader = require("plenary.reload")
+local common = require("curl.common")
+local parser = require("curl.parser")
+local bufprint = require("curl.bufprint").bufprint
 
 local function handle_input(bufnr)
 	normal.handle_input(bufnr)
@@ -12,6 +15,9 @@ local function reload()
 	reloader.reload_module("curl")
 	normal = require("curl.normal")
 	insert = require("curl.insert")
+	common = require("curl.common")
+	parser = require("curl.parser")
+	bufprint = require("curl.bufprint").bufprint
 end
 
 local function reset_custom_buffer(name)
@@ -47,6 +53,31 @@ function M.new_empty_buf()
 	handle_input(bufnr);
 end
 
-vim.api.nvim_create_user_command('Curl', M.new_empty_buf, {})
+function M.try_run_req()
+	local bufnr = vim.api.nvim_get_current_buf()
+	local start_line_nr, end_line_nr = common.get_block_bounds()
+	local start_line = vim.api.nvim_buf_get_lines(bufnr, start_line_nr - 1, start_line_nr, false)[1]
+	local end_line = vim.api.nvim_buf_get_lines(bufnr, end_line_nr - 1, end_line_nr, false)[1]
+
+	if string.find(start_line, common.start_expr) == nil then
+		error("No #REQ found in the whole file")
+	end
+
+	if string.find(end_line, common.end_expr) == nil then
+		error("No #END found in the whole file")
+	end
+
+	local lines = vim.api.nvim_buf_get_lines(bufnr, start_line_nr - 1, end_line_nr, false)
+	local res = parser.parse(lines)
+
+	if res.error_msg then
+		error(res.error_msg)
+	else
+		bufprint(res.cmd)
+	end
+end
+
+-- vim.api.nvim_create_user_command('Curl', M.new_empty_buf, {})
+vim.api.nvim_create_user_command('CurlTryRun', M.try_run_req, {})
 
 return M

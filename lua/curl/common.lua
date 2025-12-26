@@ -77,4 +77,57 @@ function M.split_delim(str, delim)
     return result
 end
 
+---@param line string
+---@param delim string
+---@return [string?, string?]
+function M.split_delim_once_trimmed(line, delim)
+	local left = ""
+	local i = line:find(delim, 1, true)
+
+	if i == nil then
+		return {nil, nil}
+	end
+
+	left = M.trim(line:sub(1, i - 1))
+	line = M.trim(line:sub(i + 1, #line))
+
+	return { left, line }
+end
+
+---@param t table
+function M.table_insert_multi(t, ...)
+	for _, v in ipairs({...}) do
+		table.insert(t, v)
+	end
+end
+
+---@param t table
+---@return number
+function M.table_size(t)
+    local count = 0
+    for _ in pairs(t) do
+        count = count + 1
+    end
+    return count
+end
+
+---@param t table
+---@param delim string
+---@return string
+function M.join(t, delim)
+	if #t == 0 then
+		return ""
+	end
+
+    local str = t[1]
+	local i = 2
+
+	while i <= #t do
+		str = str..delim..t[i]
+		i = i + 1
+	end
+
+	return str
+end
+
 return M
