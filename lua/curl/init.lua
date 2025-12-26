@@ -1,23 +1,12 @@
 local M = {}
 local reloader = require("plenary.reload")
-local normal = require("curl.normal")
-local insert = require("curl.insert")
 local common = require("curl.common")
 local parser = require("curl.parser")
-local bufprint = require("curl.bufprint").bufprint
-
-local function handle_input(bufnr)
-	normal.handle_input(bufnr)
-	insert.handle_input(bufnr)
-end
 
 local function reload()
 	reloader.reload_module("curl")
-	normal = require("curl.normal")
-	insert = require("curl.insert")
 	common = require("curl.common")
 	parser = require("curl.parser")
-	bufprint = require("curl.bufprint").bufprint
 end
 
 local function reset_custom_buffer(name)
@@ -40,24 +29,80 @@ function M.new_empty_buf()
 
     local lines = {
         "#REQ",
-        "GET localhost",
-        "Content-Type: text/html",
-		'{ "cool": "body" }',
+        "GET http://localhost:3000",
+        "Content-Type: application/json",
         "#END"
     }
 
     vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
     vim.api.nvim_set_current_buf(bufnr)
     vim.api.nvim_win_set_cursor(0, {2, 0})
-    vim.api.nvim_buf_set_option(bufnr, 'filetype', 'CURL')
-	handle_input(bufnr);
+    vim.api.nvim_buf_set_option(bufnr, 'filetype', 'curl')
 end
 
-function M.try_run_req()
+---@param lines string[]
+---@return number?
+local function find_RES_in_lines(lines)
+	for idx, line in ipairs(lines) do
+		if string.find(line, "^#RES") then
+			return idx
+		end
+	end
+	return nil
+end
+
+local discard_starts_with = { "^ ", "^[*]", "^Note", "^[0-9]", "^[{}]" }
+
+local function run_curl_clean(cmd, bufnr, line_nr)
+	local stdout_data = {}
+	local stderr_data = {}
+
+	vim.system(cmd, {
+		stdout = function(_, data)
+			if data == nil then return end
+			table.insert(stdout_data, data)
+		end,
+		stderr = function(_, data)
+			if data == nil then return end
+			table.insert(stderr_data, data)
+		end,
+	}, function(obj)
+		vim.schedule(function()
+			if not vim.api.nvim_buf_is_valid(bufnr) then return end
+
+			local stdout_str = table.concat(stdout_data)
+			local stderr_str = table.concat(stderr_data)
+
+			local lines_stderr = vim.split(stderr_str, "[\r\n]", { trimempty = true })
+			local lines_stdout = vim.split(stdout_str, "[\r\n]", { trimempty = true })
+
+			lines_stderr = vim.tbl_filter(function(line)
+				for _, v in pairs(discard_starts_with) do
+					if string.find(line, v) then return false end
+				end
+				return line ~= ""
+			end, lines_stderr)
+
+			local lines = lines_stderr
+			table.insert(lines, "")
+			for _, v in ipairs(lines_stdout) do
+				table.insert(lines, v)
+			end
+
+			vim.api.nvim_buf_set_lines(bufnr, line_nr, line_nr, false, lines)
+		end)
+	end)
+end
+
+function M.try_run_req_within_buf()
 	local bufnr = vim.api.nvim_get_current_buf()
 	local start_line_nr, end_line_nr = common.get_block_bounds()
-	local start_line = vim.api.nvim_buf_get_lines(bufnr, start_line_nr - 1, start_line_nr, false)[1]
+	local start_line = vim.api.nvim_buf_get_lines(bufnr, math.max(start_line_nr - 1, 0), start_line_nr, false)[1]
 	local end_line = vim.api.nvim_buf_get_lines(bufnr, end_line_nr - 1, end_line_nr, false)[1]
+
+	if start_line == nil or end_line == nil then
+		error("Cursor not between any known REQ structure")
+	end
 
 	if string.find(start_line, common.start_expr) == nil then
 		error("No #REQ found in the whole file")
@@ -68,16 +113,26 @@ function M.try_run_req()
 	end
 
 	local lines = vim.api.nvim_buf_get_lines(bufnr, start_line_nr - 1, end_line_nr, false)
+
+	local RES = find_RES_in_lines(lines)
+
+	if RES then
+		local start_idx = start_line_nr + RES - 1
+		local diff = end_line_nr - start_idx
+		vim.api.nvim_buf_set_lines(bufnr, start_idx, end_line_nr - 1, false, {""})
+		vim.api.nvim_win_set_cursor(0, {start_idx, 0})
+		end_line_nr = end_line_nr - diff + 1
+	else
+		vim.api.nvim_buf_set_lines(bufnr, end_line_nr - 1, end_line_nr - 1, false, {"#RES"})
+	end
+
 	local res = parser.parse(lines)
 
 	if res.error_msg then
 		error(res.error_msg)
-	else
-		bufprint(res.cmd)
 	end
-end
 
--- vim.api.nvim_create_user_command('Curl', M.new_empty_buf, {})
-vim.api.nvim_create_user_command('CurlTryRun', M.try_run_req, {})
+	run_curl_clean(res.cmd, bufnr, end_line_nr - 1)
+end
 
 return M

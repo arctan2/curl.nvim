@@ -20,8 +20,14 @@ function M.is_boundary_end(line_num)
 end
 
 function M.get_block_bounds()
+	local cur_line = vim.api.nvim_get_current_line()
 	local start_line = vim.fn.search(start_expr, "bnW")
 	local end_line = vim.fn.search(end_expr, "nW")
+
+	local cursor_pos = vim.api.nvim_win_get_cursor(0)
+	local line_nr = cursor_pos[1]
+
+	if cur_line and string.find(cur_line, "#REQ") then start_line = line_nr end
 
 	if end_line == 0 then end_line = vim.api.nvim_buf_line_count(0) + 1 end
 
@@ -31,50 +37,6 @@ end
 function M.trim(s)
     local left_trimmed = string.gsub(s, "^%s+", "")
     return string.gsub(left_trimmed, "%s+$", "")
-end
-
----@param str string
----@return string[]
-function M.split_lines(str)
-    str = str:gsub("\r\n", "\n")
-
-    if str:sub(-1) ~= "\n" then
-        str = str .. "\n"
-    end
-
-    local result = {}
-    for line in string.gmatch(str, "(.-)\n") do
-        table.insert(result, line)
-    end
-    return result
-end
-
----@param str string
----@param delim string
----@return string[]
-function M.split_delim(str, delim)
-    if delim == nil or #delim == 0 then
-        return {str}
-    end
-
-    local result = {}
-    local pos = 1
-    local del_len = #delim
-
-    while true do
-        local nextPos = string.find(str, delim, pos, true)
-        if nextPos then
-            local part = string.sub(str, pos, nextPos - 1)
-            pos = nextPos + del_len
-            table.insert(result, part)
-        else
-            local part = string.sub(str, pos)
-            table.insert(result, part)
-            break
-        end
-    end
-
-    return result
 end
 
 ---@param line string
@@ -109,25 +71,6 @@ function M.table_size(t)
         count = count + 1
     end
     return count
-end
-
----@param t table
----@param delim string
----@return string
-function M.join(t, delim)
-	if #t == 0 then
-		return ""
-	end
-
-    local str = t[1]
-	local i = 2
-
-	while i <= #t do
-		str = str..delim..t[i]
-		i = i + 1
-	end
-
-	return str
 end
 
 return M

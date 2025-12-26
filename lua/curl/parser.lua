@@ -1,6 +1,5 @@
 local M = {}
 local common = require("curl.common")
-local bufprint = require("curl.bufprint").bufprint
 
 ---@enum States
 local States = {
@@ -281,7 +280,7 @@ function ParserState:to_curl_cmd()
 		return {}
 	end
 
-	local cmd = {"curl"}
+	local cmd = {"curl", "-v"}
 	local url = self.http_state.host
 	common.table_insert_multi(cmd, "-X", self.http_state.method)
 
@@ -328,7 +327,7 @@ end
 ---@param lines string[]|string
 function M.parse(lines)
 	if type(lines) == "string" then
-		lines = common.split_lines(lines)
+		lines = vim.split(lines:gsub("\r\n", "\n"), "\n", {})
 	end
 
 	local parser = ParserState.new(lines)
@@ -353,7 +352,7 @@ function M.parse(lines)
 
 	local e = parser.error_msg
 	if e then return { cmd = nil, error_msg = e } end
-	return { cmd = common.join(parser:to_curl_cmd(), " "), error_msg = e }
+	return { cmd = parser:to_curl_cmd(), error_msg = e }
 end
 
 return M

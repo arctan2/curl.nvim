@@ -1,0 +1,6 @@
+#REQ
+GET https://dummyjson.com/posts/1
+Content-Type: application/json
+#END
+
+
