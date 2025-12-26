@@ -1,6 +1,38 @@
 #REQ
 GET https://dummyjson.com/posts/1
 Content-Type: application/json
+#RES
+> GET /posts/1 HTTP/2
+> Host: dummyjson.com
+> user-agent: curl/7.81.0
+> accept: */*
+> "content-type:application/json"
+> 
+< HTTP/2 200 
+< date: Fri, 26 Dec 2025 15:35:04 GMT
+< content-type: application/json; charset=utf-8
+< content-length: 453
+< server: cloudflare
+< x-ratelimit-limit: 100
+< x-ratelimit-remaining: 99
+< x-ratelimit-reset: 1766763308
+< x-dns-prefetch-control: off
+< x-frame-options: SAMEORIGIN
+< strict-transport-security: max-age=15552000; includeSubDomains
+< x-download-options: noopen
+< x-content-type-options: nosniff
+< x-xss-protection: 1; mode=block
+< access-control-allow-origin: *
+< etag: W/"1c5-HOjJyPXFuJStMSX7RB8h5QIDDRY"
+< vary: Accept-Encoding
+< cf-cache-status: DYNAMIC
+< nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+< report-to: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=oe6zmA7ncbRQlbb7JTaf1MHMi7fR4Rw1NQmCczLA14xhHZQlOqR7NKJ4iBQohK38gt7wjhwGTgTgyPAnN4aAoIY1CknIbk2rErr5n5yFi8PZ%2BJbRhdvhXJM%3D"}]}
+< cf-ray: 9b41a5577e8f3c12-BLR
+< 
+
+{"id":1,"title":"His mother had always taught him","body":"His mother had always taught him not to ever think of himself as better than others. He'd tried to live by this motto. He never looked down on those who were less fortunate or who had less money than him. But the stupidity of the group of people he was talking to made him change his mind.","tags":["history","american","crime"],"reactions":{"likes":192,"dislikes":25},"views":305,"userId":121}
+
 #END
 
 

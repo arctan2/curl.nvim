@@ -1,13 +1,13 @@
 local M = {}
-local reloader = require("plenary.reload")
+-- local reloader = require("plenary.reload")
 local common = require("curl.common")
 local parser = require("curl.parser")
 
-local function reload()
-	reloader.reload_module("curl")
-	common = require("curl.common")
-	parser = require("curl.parser")
-end
+-- local function reload()
+-- 	reloader.reload_module("curl")
+-- 	common = require("curl.common")
+-- 	parser = require("curl.parser")
+-- end
 
 local function reset_custom_buffer(name)
     local bufnr = vim.fn.bufnr(name)
@@ -22,7 +22,7 @@ local function reset_custom_buffer(name)
 end
 
 function M.new_empty_buf()
-	reload()
+	-- reload()
 
 	local bufname = "-- CURL --"
 	local bufnr = reset_custom_buffer(bufname)
@@ -54,6 +54,7 @@ end
 local discard_starts_with = { "^ ", "^[*]", "^Note", "^[0-9]", "^[{}]" }
 
 local function run_curl_clean(cmd, bufnr, line_nr)
+	print("Running curl...")
 	local stdout_data = {}
 	local stderr_data = {}
 
@@ -91,6 +92,8 @@ local function run_curl_clean(cmd, bufnr, line_nr)
 
 			vim.api.nvim_buf_set_lines(bufnr, line_nr, line_nr, false, lines)
 		end)
+
+		print("curl finished with code "..obj.code)
 	end)
 end
 
@@ -123,7 +126,8 @@ function M.try_run_req_within_buf()
 		vim.api.nvim_win_set_cursor(0, {start_idx, 0})
 		end_line_nr = end_line_nr - diff + 1
 	else
-		vim.api.nvim_buf_set_lines(bufnr, end_line_nr - 1, end_line_nr - 1, false, {"#RES"})
+		vim.api.nvim_buf_set_lines(bufnr, end_line_nr - 1, end_line_nr - 1, false, {"#RES", ""})
+		end_line_nr = end_line_nr + 1
 	end
 
 	local res = parser.parse(lines)
