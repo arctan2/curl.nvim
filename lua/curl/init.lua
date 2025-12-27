@@ -8,33 +8,60 @@ local parser = require("curl.parser")
 -- 	common = require("curl.common")
 -- 	parser = require("curl.parser")
 -- end
--- 
+
 -- reload()
 
-local function reset_custom_buffer(name)
-    local bufnr = vim.fn.bufnr(name)
+local boilerplate = {
+	"#REQ",
+	"GET http://localhost:3000",
+	"Content-Type: application/json",
+	"",
+	"#ARGS",
+	"",
+	"#END"
+}
 
-    if bufnr ~= -1 and vim.api.nvim_buf_is_valid(bufnr) then
-        vim.api.nvim_buf_delete(bufnr, { force = true })
-    end
-
-    local new_buf = vim.api.nvim_create_buf(true, true)
-    vim.api.nvim_buf_set_name(new_buf, name)
-    return new_buf
+local function curl_buf_name(nr)
+	return string.format("-- CURL %d --", nr)
 end
 
-function M.new_empty_buf()
-	local bufname = "-- CURL --"
-	local bufnr = reset_custom_buffer(bufname)
+local function bind_keymaps(buf)
+	vim.keymap.set("n", "<leader>jq", ":.!jq . --tab<CR>", { noremap = true, silent = true, buffer = buf })
+	vim.keymap.set("v", "<leader>jq", ":!jq . --tab<CR>", { noremap = true, silent = true, buffer = buf })
+	vim.keymap.set("n", "<leader>rr", M.try_run_req_within_buf, { noremap = true, buffer = buf })
+	vim.keymap.set("n", "<leader>nr", function ()
+		local last_line = vim.api.nvim_buf_line_count(0)
+		vim.api.nvim_buf_set_lines(0, -1, -1, false, { "" })
+		vim.api.nvim_win_set_cursor(0, {last_line + 1, 0})
+		M.new_req()
+	end, { noremap = true, buffer = buf })
+end
 
-    local lines = {
-        "#REQ",
-        "GET http://localhost:3000",
-        "Content-Type: application/json",
-        "#END"
-    }
+local function new_custom_buffer(mode)
+	local i = 1
+	while true do
+		local bufname = curl_buf_name(i)
+		local bufnr = vim.fn.bufnr(bufname)
+		if not vim.api.nvim_buf_is_valid(bufnr) then
+			bufnr = vim.api.nvim_create_buf(true, true)
+			if mode == "v" then
+				vim.cmd('vertical sbuffer ' .. bufnr)
+			elseif mode == "h" then
+				vim.cmd('sbuffer ' .. bufnr)
+			end
 
-    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+			vim.api.nvim_buf_set_name(bufnr, bufname)
+			bind_keymaps(bufnr)
+			return bufnr
+		end
+		i = i + 1
+	end
+end
+
+function M.new_empty_buf(opts)
+	local bufnr = new_custom_buffer(opts.args)
+
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, boilerplate)
     vim.api.nvim_set_current_buf(bufnr)
     vim.api.nvim_win_set_cursor(0, {2, 0})
     vim.api.nvim_buf_set_option(bufnr, 'filetype', 'curl')
@@ -53,7 +80,7 @@ end
 
 local discard_starts_with = { "^ ", "^[*]", "^Note", "^[0-9]", "^[{}]" }
 
-local function run_curl_clean(cmd, bufnr, line_nr, replace_asterisk_backslash, verbose_all)
+local function run_curl_clean(cmd, bufnr, line_nr, replace_star_slash, verbose_all)
 	print("Running curl...")
 	local stdout_data = {}
 	local stderr_data = {}
@@ -74,7 +101,7 @@ local function run_curl_clean(cmd, bufnr, line_nr, replace_asterisk_backslash, v
 			local stdout_str = table.concat(stdout_data)
 			local stderr_str = table.concat(stderr_data)
 
-			if replace_asterisk_backslash then
+			if replace_star_slash then
 				stderr_str = stderr_str:gsub("%*/", "* /")
 				stdout_str = stdout_str:gsub("%*/", "* /")
 			end
@@ -102,6 +129,14 @@ local function run_curl_clean(cmd, bufnr, line_nr, replace_asterisk_backslash, v
 
 		print("curl finished with code "..obj.code)
 	end)
+end
+
+function M.new_req()
+	local bufnr = vim.api.nvim_get_current_buf()
+	local cursor = vim.api.nvim_win_get_cursor(0)
+	local line_nr = cursor[1]
+    vim.api.nvim_buf_set_lines(bufnr, line_nr, line_nr, false, boilerplate)
+	vim.api.nvim_win_set_cursor(0, {line_nr + 2, 0})
 end
 
 function M.try_run_req_within_buf()
@@ -147,7 +182,7 @@ function M.try_run_req_within_buf()
 		res.cmd,
 		bufnr,
 		end_line_nr - 1,
-		res.replace_asterisk_backslash,
+		res.replace_star_slash,
 		res.verbose_all
 	)
 end

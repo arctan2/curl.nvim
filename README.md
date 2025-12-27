@@ -7,7 +7,8 @@ It's the most basic curl frontend.
 |command|action|
 |-------|------|
 |`:Curl`|try parsing and running the request under the cursor|
-|`:CurlScratch`|open new scratch buffer. Note: you need to have [scratch.nvim](https://github.com/arctan2/scratch.nvim) plugin installed|
+|`:CurlNew`|creates a new request boilerplate below the cursor|
+|`:CurlScratch ?[v\|h]`|open new scratch buffer. Note: you need to have [scratch.nvim](https://github.com/arctan2/scratch.nvim) plugin installed|
 
 # Syntax
 
@@ -57,14 +58,14 @@ Example:
 GET http://localhost:3000
 
 #ARGS
--v --replace_asterisk_backslash=false
+-v --replace-star-slash=false
 #END
 ```
 
 args:
 - `-v`, `--verbose`: verbose output
 - `--all`: more verbose output
-- `--replace_asterisk_backslash=[true|false]`: to replace `*/` with `* /` (`*/` will break multi line comments)
+- `--replace-star-slash=[true|false]`: to replace `*/` with `* /` (`*/` will break multi line comments)
 ---
 `#QUERY`
 
@@ -128,3 +129,14 @@ Another-header-key: Value
 { "cool": "body" }
 #END
 ```
+---
+
+# Integration with `scratch.nvim`
+
+If you have `scratch.nvim` plugin installed you can do `:CurlScratch ?[v|h]` to get a new curl scratch buffer which does some basic
+highlighting for your sanity. It also gives you some keymaps as follows:
+- normal`<leader>rr`: runs the request
+- normal`<leader>nr`: new request at end of file
+- normal`<leader>jq`: runs `jq` on current line
+- visual`<leader>jq`: runs `jq` on visual selected lines
+

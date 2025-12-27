@@ -47,7 +47,7 @@ local HttpMethods = {
 ---@field error_msg? string
 ---@field verbose_output boolean
 ---@field verbose_all boolean
----@field replace_asterisk_backslash boolean
+---@field replace_star_slash boolean
 ---@field http_state HttpPacket
 local ParserState = {}
 ParserState.__index = ParserState
@@ -61,7 +61,7 @@ function ParserState.new(lines)
 	self.cur_section = nil
 	self.verbose_output = false
 	self.verbose_all = false
-	self.replace_asterisk_backslash = true
+	self.replace_star_slash = true
 	self.http_state = {
 		headers = {},
 		cookies = {},
@@ -259,7 +259,8 @@ function ParserState:eval_long_arg(arg)
 		self.verbose_output = true
 	elseif l == "all" then
 		self.verbose_all = true
-	elseif l == "replace_asterisk_backslash" then
+		self.verbose_output = true
+	elseif l == "replace-star-slash" then
 		if r == nil then
 			self:set_error("Missing value for arg '%s'", l)
 			return false
@@ -270,7 +271,7 @@ function ParserState:eval_long_arg(arg)
 			return false
 		end
 
-		self.replace_asterisk_backslash = false
+		self.replace_star_slash = false
 	else
 		self:set_error("Unknown arg '%s'", arg)
 		return false
@@ -444,7 +445,7 @@ function M.parse(lines)
 	return {
 		cmd = parser:to_curl_cmd(),
 		error_msg = e,
-		replace_asterisk_backslash = parser.replace_asterisk_backslash,
+		replace_star_slash = parser.replace_star_slash,
 		verbose_all = parser.verbose_all
 	}
 end
