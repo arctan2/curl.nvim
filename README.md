@@ -1,6 +1,6 @@
 # About
 
-It's the most basic curl frontend.
+Most basic curl wrapper. Made for convenience. Runs anywhere in the buffer.
 
 # Usage
 
