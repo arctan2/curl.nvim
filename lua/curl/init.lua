@@ -80,8 +80,8 @@ end
 
 local discard_starts_with = { "^ ", "^[*]", "^Note", "^[0-9]", "^[{}]" }
 
-local function run_curl_clean(cmd, bufnr, line_nr, replace_star_slash, verbose_all)
-	print("Running curl...")
+local function run_curl_clean(cmd, bufnr, line_nr, opts)
+	print(string.format("running curl %s", cmd[#cmd]))
 	local stdout_data = {}
 	local stderr_data = {}
 
@@ -101,7 +101,7 @@ local function run_curl_clean(cmd, bufnr, line_nr, replace_star_slash, verbose_a
 			local stdout_str = table.concat(stdout_data)
 			local stderr_str = table.concat(stderr_data)
 
-			if replace_star_slash then
+			if opts.replace_star_slash then
 				stderr_str = stderr_str:gsub("%*/", "* /")
 				stdout_str = stdout_str:gsub("%*/", "* /")
 			end
@@ -109,7 +109,7 @@ local function run_curl_clean(cmd, bufnr, line_nr, replace_star_slash, verbose_a
 			local lines_stderr = vim.split(stderr_str, "[\r\n]", { trimempty = true })
 			local lines_stdout = vim.split(stdout_str, "[\r\n]", { trimempty = true })
 
-			if not verbose_all then
+			if not opts.verbose_all then
 				lines_stderr = vim.tbl_filter(function(line)
 					for _, v in pairs(discard_starts_with) do
 						if string.find(line, v) then return false end
@@ -118,7 +118,16 @@ local function run_curl_clean(cmd, bufnr, line_nr, replace_star_slash, verbose_a
 				end, lines_stderr)
 			end
 
-			local lines = lines_stderr
+			local lines = {}
+			if opts.output_curl_cmd then
+				table.insert(lines, table.concat(cmd, " "))
+				table.insert(lines, "")
+			end
+
+			for _, v in ipairs(lines_stderr) do
+				table.insert(lines, v)
+			end
+
 			table.insert(lines, "")
 			for _, v in ipairs(lines_stdout) do
 				table.insert(lines, v)
@@ -182,8 +191,11 @@ function M.try_run_req_within_buf()
 		res.cmd,
 		bufnr,
 		end_line_nr - 1,
-		res.replace_star_slash,
-		res.verbose_all
+		{
+			replace_star_slash = res.replace_star_slash,
+			verbose_all = res.verbose_all,
+			output_curl_cmd = res.output_curl_cmd
+		}
 	)
 end
 

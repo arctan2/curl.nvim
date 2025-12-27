@@ -48,6 +48,7 @@ local HttpMethods = {
 ---@field verbose_output boolean
 ---@field verbose_all boolean
 ---@field replace_star_slash boolean
+---@field output_curl_cmd boolean
 ---@field http_state HttpPacket
 local ParserState = {}
 ParserState.__index = ParserState
@@ -61,6 +62,7 @@ function ParserState.new(lines)
 	self.cur_section = nil
 	self.verbose_output = false
 	self.verbose_all = false
+	self.output_curl_cmd = false
 	self.replace_star_slash = true
 	self.http_state = {
 		headers = {},
@@ -257,6 +259,8 @@ function ParserState:eval_long_arg(arg)
 
 	if l == "verbose" then
 		self.verbose_output = true
+	elseif l == "out-curl-cmd" then
+		self.output_curl_cmd = true
 	elseif l == "all" then
 		self.verbose_all = true
 		self.verbose_output = true
@@ -373,24 +377,24 @@ function ParserState:to_curl_cmd()
 	common.table_insert_multi(cmd, "-X", self.http_state.method)
 
 	if common.table_size(self.http_state.headers) > 0 then
-		common.table_insert_multi(cmd, "--header")
-		local str = '"'
+		common.table_insert_multi(cmd, "-H")
+		local str = ""
 		for k, v in pairs(self.http_state.headers) do
 			str = str..k..":"..v..";"
 		end
 
-		str = str:sub(0, #str - 1)..'"'
+		str = str:sub(0, #str - 1)
 		common.table_insert_multi(cmd, str)
 	end
 
 	if common.table_size(self.http_state.cookies) > 0 then
 		common.table_insert_multi(cmd, "--cookie")
-		local str = '"'
+		local str = ""
 		for k, v in pairs(self.http_state.cookies) do
 			str = str..k.."="..v..";"
 		end
 
-		str = str:sub(0, #str - 1)..'"'
+		str = str:sub(0, #str - 1)
 		common.table_insert_multi(cmd, str)
 	end
 
@@ -404,7 +408,7 @@ function ParserState:to_curl_cmd()
 	end
 
 	if self.http_state.body ~= nil then
-		common.table_insert_multi(cmd, "--data", "'"..self.http_state.body.."'")
+		common.table_insert_multi(cmd, "--data", self.http_state.body)
 	end
 
 	common.table_insert_multi(cmd, "--url", url)
@@ -446,7 +450,8 @@ function M.parse(lines)
 		cmd = parser:to_curl_cmd(),
 		error_msg = e,
 		replace_star_slash = parser.replace_star_slash,
-		verbose_all = parser.verbose_all
+		verbose_all = parser.verbose_all,
+		output_curl_cmd = parser.output_curl_cmd
 	}
 end
 

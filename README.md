@@ -66,6 +66,7 @@ args:
 - `-v`, `--verbose`: verbose output
 - `--all`: more verbose output
 - `--replace-star-slash=[true|false]`: to replace `*/` with `* /` (`*/` will break multi line comments)
+- `--out-curl-cmd`: output curl command
 ---
 `#QUERY`
 
