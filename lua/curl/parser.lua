@@ -199,6 +199,34 @@ function ParserState:parse_header(line)
 	return true
 end
 
+---@return string?, boolean
+function ParserState:read_value(raw_val)
+	if raw_val:sub(1, 1) ~= "`" then
+		return raw_val, true
+	end
+
+	local rest = raw_val:sub(2)
+	local parts = {}
+
+	while true do
+		if #rest > 0 and rest:sub(#rest) == "`" then
+			table.insert(parts, rest:sub(1, #rest - 1))
+			break
+		end
+
+		table.insert(parts, rest)
+
+		local next = self:next_line()
+		if next == nil then
+			self:set_error("Unterminated multiline value, expected closing backtick")
+			return nil, false
+		end
+		rest = next
+	end
+
+	return table.concat(parts, "%0A"), true
+end
+
 ---@param line string
 ---@return boolean
 function ParserState:eval_REQ(line)
@@ -243,7 +271,7 @@ function ParserState:eval_QUERY(line)
 		return false
 	end
 
-	self.http_state.query[key] = val
+	self.http_state.query[key] = self:read_value(val)
 
 	return true
 end
@@ -401,7 +429,9 @@ function ParserState:to_curl_cmd()
 	if common.table_size(self.http_state.query) > 0 then
 		local str = ''
 		for k, v in pairs(self.http_state.query) do
-			str = str..k.."="..v:gsub(" ", "+").."&"
+			local encoded_v = v:gsub("\t", "%%09"):gsub(" ", "%%20"):gsub("\n", "%%0A")
+			local encoded_k = k:gsub("\t", "%%09"):gsub(" ", "%%20"):gsub("\n", "%%0A")
+			str = str..encoded_k.."="..encoded_v.."&"
 		end
 
 		url = url.."?"..str:sub(0, #str - 1)

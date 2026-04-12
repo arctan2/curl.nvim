@@ -1,8 +1,8 @@
 local M = {}
--- local reloader = require("plenary.reload")
 local common = require("curl.common")
 local parser = require("curl.parser")
 
+-- local reloader = require("plenary.reload")
 -- local function reload()
 -- 	reloader.reload_module("curl")
 -- 	common = require("curl.common")
