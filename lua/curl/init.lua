@@ -8,7 +8,7 @@ local parser = require("curl.parser")
 -- 	common = require("curl.common")
 -- 	parser = require("curl.parser")
 -- end
-
+-- 
 -- reload()
 
 local boilerplate = {
@@ -148,6 +148,70 @@ function M.new_req()
 	vim.api.nvim_win_set_cursor(0, {line_nr + 2, 0})
 end
 
+---@param lines string[]
+function M.new_custom_req(lines)
+	local bufnr = vim.api.nvim_get_current_buf()
+	local cursor = vim.api.nvim_win_get_cursor(0)
+	local line_nr = cursor[1]
+    vim.api.nvim_buf_set_lines(bufnr, line_nr, line_nr, false, lines)
+	vim.api.nvim_win_set_cursor(0, {line_nr + 2, 0})
+end
+
+---@param bufnr number
+---@param start_line_nr number
+---@param end_line_nr number
+---@param lines string[]
+local function clear_RES(bufnr, start_line_nr, end_line_nr, lines)
+	local RES = find_RES_in_lines(lines)
+
+	if RES then
+		local start_idx = start_line_nr + RES - 1
+		local diff = end_line_nr - start_idx
+		vim.api.nvim_buf_set_lines(bufnr, start_idx, end_line_nr - 1, false, {""})
+		vim.api.nvim_win_set_cursor(0, {start_idx, 0})
+		end_line_nr = end_line_nr - diff + 1
+	else
+		vim.api.nvim_buf_set_lines(bufnr, end_line_nr - 1, end_line_nr - 1, false, {"#RES", ""})
+		end_line_nr = end_line_nr + 1
+	end
+
+	return end_line_nr
+end
+
+function M.clear_response()
+	local bufnr = vim.api.nvim_get_current_buf()
+	local start_line_nr, end_line_nr = common.get_block_bounds()
+	local lines = vim.api.nvim_buf_get_lines(bufnr, start_line_nr - 1, end_line_nr, false)
+	clear_RES(bufnr, start_line_nr, end_line_nr, lines)
+end
+
+function M.fold_block_under_cursor()
+	local start_line_nr, end_line_nr = common.get_block_bounds()
+	vim.wo.foldmethod = 'manual'
+    vim.cmd(string.format("%d,%dfold", start_line_nr, end_line_nr))
+end
+
+function M.fold_all_blocks()
+	local bufnr = vim.api.nvim_get_current_buf()
+	local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+
+	vim.wo.foldmethod = 'manual'
+
+	vim.cmd('normal! zE')
+
+	local start_line = nil
+
+	for i, line in ipairs(lines) do
+		if line:find("#REQ") then
+			start_line = i
+		elseif line:find("#END") and start_line ~= nil then
+			local end_line = i
+			pcall(vim.cmd, string.format("%d,%dfold", start_line, end_line))
+			start_line = nil
+		end
+	end
+end
+
 function M.try_run_req_within_buf()
 	local bufnr = vim.api.nvim_get_current_buf()
 	local start_line_nr, end_line_nr = common.get_block_bounds()
@@ -168,18 +232,7 @@ function M.try_run_req_within_buf()
 
 	local lines = vim.api.nvim_buf_get_lines(bufnr, start_line_nr - 1, end_line_nr, false)
 
-	local RES = find_RES_in_lines(lines)
-
-	if RES then
-		local start_idx = start_line_nr + RES - 1
-		local diff = end_line_nr - start_idx
-		vim.api.nvim_buf_set_lines(bufnr, start_idx, end_line_nr - 1, false, {""})
-		vim.api.nvim_win_set_cursor(0, {start_idx, 0})
-		end_line_nr = end_line_nr - diff + 1
-	else
-		vim.api.nvim_buf_set_lines(bufnr, end_line_nr - 1, end_line_nr - 1, false, {"#RES", ""})
-		end_line_nr = end_line_nr + 1
-	end
+	end_line_nr = clear_RES(bufnr, start_line_nr, end_line_nr, lines)
 
 	local res = parser.parse(lines)
 

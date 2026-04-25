@@ -1,25 +1,18 @@
-#REQ
+#REQ // cool api
 GET https://dummyjson.com/posts/1
 Content-Type: application/json
 #ARGS
 -v
+
 #RES
+
 #END
 
 #REQ
-GET http://localhost:8123
+GET http://localhost:3000
 Content-Type: application/json
-#QUERY
-query=`
-SELECT * FROM events_data_v1.insider_trades LIMIT 1
-FORMAT PrettyCompact
-SETTINGS
-	output_format_pretty_max_column_pad_width = 20000,
-	output_format_pretty_row_numbers = 0
-`
-#ARGS
-#RES
 
-Code: 70. DB::Exception: Field value -1 is out of range of unsigned long type. (CANNOT_CONVERT_TYPE) (version 25.3.14.14 (official build))
+#ARGS
 
 #END
+

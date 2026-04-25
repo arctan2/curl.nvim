@@ -4,5 +4,6 @@ vim.filetype.add({
 	},
 	pattern = {
 		["%.curl_buffer$"] = "curl",
+		[".*%.curl"] = "curl",
 	},
 })
