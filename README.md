@@ -9,6 +9,9 @@ Most basic curl wrapper. Made for convenience. Runs anywhere in the buffer.
 |`:Curl`|try parsing and running the request under the cursor|
 |`:CurlNew`|creates a new request boilerplate below the cursor|
 |`:CurlScratch ?[v\|h]`|open new scratch buffer. Note: you need to have [scratch.nvim](https://github.com/arctan2/scratch.nvim) plugin installed|
+|`:CurlClearRes`|clear the response block|
+|`:CurlFold`|fold the current block|
+|`:CurlFoldAll`|fold all blocks in the buffer recursively|
 
 # Syntax
 
