@@ -140,14 +140,6 @@ local function run_curl_clean(cmd, bufnr, line_nr, opts)
 	end)
 end
 
-function M.new_req()
-	local bufnr = vim.api.nvim_get_current_buf()
-	local cursor = vim.api.nvim_win_get_cursor(0)
-	local line_nr = cursor[1]
-    vim.api.nvim_buf_set_lines(bufnr, line_nr, line_nr, false, boilerplate)
-	vim.api.nvim_win_set_cursor(0, {line_nr + 2, 0})
-end
-
 ---@param lines string[]
 function M.new_custom_req(lines)
 	local bufnr = vim.api.nvim_get_current_buf()
@@ -155,6 +147,10 @@ function M.new_custom_req(lines)
 	local line_nr = cursor[1]
     vim.api.nvim_buf_set_lines(bufnr, line_nr, line_nr, false, lines)
 	vim.api.nvim_win_set_cursor(0, {line_nr + 2, 0})
+end
+
+function M.new_req()
+    M.new_custom_req(boilerplate)
 end
 
 ---@param bufnr number
